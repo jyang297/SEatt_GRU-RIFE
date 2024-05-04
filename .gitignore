@@ -2,3 +2,5 @@ frames/
 output/
 outputs/
 intrain_log/
+model/.ipynb_checkpoints/
+model/__pycache__/
