@@ -15,7 +15,7 @@ shift = int(n)
 1. The shift is used to shift the start point of selecting the start point of interpolation. The manual shift for inferenceVideo_realVersion.py should be 16, and for inferenceVideo_replaceVersion.py should be 18.
 2. The frame_path should store the frames to be interpolated.
 3. The output_path should be your desired output folder.
-4. The pretrained model can be downloaded here at google drive:
+4. The pretrained model can be downloaded here at google drive: https://drive.google.com/file/d/1UPMaT7Y5obe_cC0NU7LaQRV8_9XM4RaU/view?usp=sharing
 
 ## 1. Video place:
 Put the video frames at the root as "frames". The name of the images should follows the format: frame_%04d, %i
