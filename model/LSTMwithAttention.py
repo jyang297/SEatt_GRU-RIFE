@@ -87,7 +87,7 @@ class FBwardExtractor(nn.Module):
         # x is concated frames [0,2,4,6] -> [(4*3),112,112] 
         forwardFeatureList = []
         for i in range(0,4):
-            x = allframes[:, 3*i:3*i+3].clone()
+            x = allframes[:, 6*i:6*i+3].clone()
             y = self.fromimage(x)  # 224*224 -> 224*224
             
             x = self.downsample(y)  # 224*224 -> 112*112
