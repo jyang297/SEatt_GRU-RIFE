@@ -12,7 +12,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 frame_path = root + "/frames"
 output_path = root + "/outputs/outputs_real"
 pretrained_model_path = root + '/intrain_log'
-shift = 348
+pretrained_path = root + 'RIFE_log' # pretrained RIFE path
+shift = 0
+
+
 
 if not os.path.exists(frame_path):
     os.mkdir(frame_path)
@@ -90,10 +93,72 @@ def inference_video(model, frame_folder, output_folder, total_frames):
                 save_frame(interpolated_frames[i, :, :, :], output_folder, save_start_point + i + 1)
             torch.cuda.empty_cache()
 
+
+def convertload(param):
+    return {
+        k.replace("module.", ""): v
+        for k, v in param.items()
+        if "module." in k
+    }
+
+
+class IFNet_update(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.block0 = IFBlock(7 + 4, c=90)
+        self.block1 = IFBlock(7 + 4, c=90)
+        self.block2 = IFBlock(7 + 4, c=90)
+        self.block_tea = IFBlock(10 + 4, c=90)
+        # self.contextnet = Contextnet()
+        # self.unet = Unet()
+
+    def forward(self, x, scale_list=[4, 2, 1]):
+        channel = x.shape[1] // 2
+        img0 = x[:, :channel]
+        img1 = x[:, channel:]
+        flow_list = []
+        merged = []
+        mask_list = []
+        warped_img0 = img0
+        warped_img1 = img1
+        flow = (x[:, :4]).detach() * 0
+        mask = (x[:, :1]).detach() * 0
+        loss_cons = 0
+        block = [self.block0, self.block1, self.block2]
+        for i in range(3):
+            f0, m0 = block[i](torch.cat((warped_img0[:, :3], warped_img1[:, :3], mask), 1), flow, scale=scale_list[i])
+            f1, m1 = block[i](torch.cat((warped_img1[:, :3], warped_img0[:, :3], -mask), 1),
+                              torch.cat((flow[:, 2:4], flow[:, :2]), 1), scale=scale_list[i])
+            flow = flow + (f0 + torch.cat((f1[:, 2:4], f1[:, :2]), 1)) / 2
+            mask = mask + (m0 + (-m1)) / 2
+            mask_list.append(mask)
+            flow_list.append(flow)
+            warped_img0 = warp(img0, flow[:, :2])
+            warped_img1 = warp(img1, flow[:, 2:4])
+            merged.append((warped_img0, warped_img1))
+        '''
+        c0 = self.contextnet(img0, flow[:, :2])
+        c1 = self.contextnet(img1, flow[:, 2:4])
+        tmp = self.unet(img0, img1, warped_img0, warped_img1, mask, flow, c0, c1)
+        res = tmp[:, 1:4] * 2 - 1
+        '''
+        for i in range(3):
+            mask_list[i] = torch.sigmoid(mask_list[i])
+            merged[i] = merged[i][0] * mask_list[i] + merged[i][1] * (1 - mask_list[i])
+            # merged[i] = torch.clamp(merged[i] + res, 0, 1)
+        return flow_list, mask_list[2], merged
+
+
 from model.inferenceRIFE import Model
 
+# Load pretrained Optical Flow Model
+checkpoint = convertload(torch.load(f'{pretrained_path}/flownet.pkl', map_location=device))
+Ori_IFNet_loaded = IFNet_update()
+Ori_IFNet_loaded.load_state_dict(checkpoint)
+for param in Ori_IFNet_loaded.parameters():
+    param.requires_grad = False
 
-model = Model(local_rank=0)
+model = Model(Ori_IFNet_loaded, local_rank=0)
 model.load_model(pretrained_model_path )
 print("Loaded ConvLSTM model")
 model.eval()
