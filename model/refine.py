@@ -102,3 +102,33 @@ class Unet(nn.Module):
         x = self.up3(torch.cat((x, s0), 1)) 
         x = self.conv(x)
         return torch.tanh(x)
+
+class Unet0to1(nn.Module):
+    def __init__(self, hidden_dim=128, shift_dim=128):
+        # orward_shiftedFeature, backward_shftedFeature, forwardContext, backwardContext
+        super().__init__()
+        self.hidden_dim=hidden_dim
+        self.shft_dim = shift_dim
+        self.down0 = Conv2(in_planes=2*(self.hidden_dim+ self.shft_dim), out_planes=(self.hidden_dim+ self.shft_dim))
+        self.down1 = Conv2((self.hidden_dim+ self.shft_dim), (self.hidden_dim+ self.shft_dim)//2)
+        self.down2 = Conv2((self.hidden_dim+ self.shft_dim)//2, (self.hidden_dim+ self.shft_dim)//4)
+        self.down3 = Conv2((self.hidden_dim+ self.shft_dim)//4, (self.hidden_dim+ self.shft_dim)//8)
+        self.up0 = deconv((self.hidden_dim+ self.shft_dim)//8, (self.hidden_dim+ self.shft_dim)//4)
+        self.up1 = deconv((self.hidden_dim+ self.shft_dim)//2, (self.hidden_dim+ self.shft_dim)//2)
+        self.up2 = deconv((self.hidden_dim+ self.shft_dim), (self.hidden_dim+ self.shft_dim))
+        self.up3 = deconv((self.hidden_dim+ self.shft_dim)*2, (self.hidden_dim+ self.shft_dim)*2)
+        self.conv = nn.Conv2d((self.hidden_dim+ self.shft_dim)*2, 3, 3, 1, 1)
+
+    def forward(self, feature_forward, feature_backward, forwardContext, backwardContext):
+
+        s0 = self.down0(torch.cat([feature_forward, feature_backward, forwardContext, backwardContext], dim=1))
+        s1 = self.down1(s0)
+        s2 = self.down2(s1)
+        s3 = self.down3(s2)
+        x = self.up0(s3)
+        x = self.up1(torch.cat([x, s2], 1)) 
+        x = self.up2(torch.cat([x, s1], 1)) 
+        x = self.up3(torch.cat([x, s0], 1)) 
+        x = self.conv(x)
+        
+        return torch.sigmoid(x)

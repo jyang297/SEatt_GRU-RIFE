@@ -2,18 +2,22 @@ import os
 import sys
 import numpy as np
 sys.path.append('/root/SE/se/RIFE_LSTM_Context')
-root = '/root/SE/se/RIFE_LSTM_Context'
+root = "/root/SEatt_GRU-RIFE"
 import torch
+import model.toloadRIFE as toload
 import torchvision.transforms as transforms
 from PIL import Image
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # Config
+from model.inferenceRIFE import Model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 frame_path = root + "/frames"
-output_path = root + "/outputs/outputs_tryall"
+output_path = root + "/outputs/outputs_replace"
 pretrained_model_path = root + '/intrain_log'
-shift = 324
+pretrained_path = root + '/RIFE_log' # pretrained RIFE path
+shift = 0
 
 if not os.path.exists(frame_path):
     os.mkdir(frame_path)
@@ -28,19 +32,7 @@ def load_frames(frame_folder, start_frame, num_frames=7):
         frame_path = os.path.join(frame_folder, f"frame_{start_frame + i:04d}.png")
         frame = Image.open(frame_path).convert('RGB')
         frames.append(frame)
-    '''
-    imgs = frames
-    h, w =(224,224)
-    ih, iw, _ = imgs[0].shape
-    x = np.random.randint(0, ih - h + 1)
-    y = np.random.randint(0, iw - w + 1)
-    for i in range(7):
-        imgs[i] = imgs[i][x:x+h, y:y+w, :]
-        #img1 = img1[x:x+h, y:y+w, :]
-        #gt = gt[x:x+h, y:y+w, :]
-        #return img0, gt, img1
-        return imgs    
-    '''
+
     print('load')
     return frames
 
@@ -51,19 +43,7 @@ def odd_load_frames(frame_folder, start_frame, num_frames=7):
         frame_path = os.path.join(frame_folder, f"frame_{start_frame + i:04d}.png")
         frame = Image.open(frame_path).convert('RGB')
         frames.append(frame)
-    '''
-    imgs = frames
-    h, w =(224,224)
-    ih, iw, _ = imgs[0].shape
-    x = np.random.randint(0, ih - h + 1)
-    y = np.random.randint(0, iw - w + 1)
-    for i in range(7):
-        imgs[i] = imgs[i][x:x+h, y:y+w, :]
-        #img1 = img1[x:x+h, y:y+w, :]
-        #gt = gt[x:x+h, y:y+w, :]
-        #return img0, gt, img1
-        return imgs    
-    '''
+
     print('load')
     return frames
 
@@ -108,12 +88,18 @@ def inference_video(model, frame_folder, output_folder, total_frames):
                 save_frame(interpolated_frames[i, :, :, :], output_folder, start_frame + i + 1)
             torch.cuda.empty_cache()
 
-from model.inferenceRIFE import Model
 
 
-model = Model(local_rank=0)
+# Load pretrained Optical Flow Model
+checkpoint = toload.convertload(torch.load(f'{pretrained_path}/flownet.pkl', map_location=device))
+Ori_IFNet_loaded = toload.IFNet_update()
+Ori_IFNet_loaded.load_state_dict(checkpoint)
+for param in Ori_IFNet_loaded.parameters():
+    param.requires_grad = False
+
+model = Model(Ori_IFNet_loaded, local_rank=0)
 model.load_model(pretrained_model_path )
 print("Loaded ConvLSTM model")
 model.eval()
 model.to_device()
-inference_video(model.simple_inference, frame_path, output_path, 36)
+inference_video(model.simple_inference, frame_path, output_path, 18)

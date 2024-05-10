@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import model.laplacian as modelLap
 from model.warplayer import warp
 from model.refine import *
-from model.myContext import *
+# from model.myContext import *
 from model.loss import *
 from model.myLossset import *
 
@@ -289,7 +289,7 @@ class newMergeIFnet(nn.Module):
         self.shift_dim = shift_dim
         self.lap = modelLap.LapLoss()
         self.feature_ofnet = Loaded_Modified_IFNet(shift_dim=self.shift_dim, pretrained_model=pretrained_model)
-        self.unet_0to1 = Unet(hidden_dim=self.hidden_dim, shift_dim=self.shift_dim)
+        self.unet_0to1 = Unet0to1(hidden_dim=self.hidden_dim, shift_dim=self.shift_dim)
         self.decoder =  nn.Sequential()
     
     def forward(self, x, forwardContext, backwardContext):

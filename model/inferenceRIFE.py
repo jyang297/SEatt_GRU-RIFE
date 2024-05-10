@@ -7,7 +7,7 @@ import itertools
 from model.warplayer import warp
 from torch.nn.parallel import DistributedDataParallel as DDP
 # from model.IFNet import *
-from model.IFNet_m import *
+# from model.IFNet_m import *
 import torch.nn.functional as F
 from model.loss import *
 from model.laplacian import *
@@ -18,9 +18,9 @@ from model.LSTM_attention_v02 import *
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.autograd.set_detect_anomaly(True)
 class Model:
-    def __init__(self, local_rank=-1, arbitrary=False):
+    def __init__(self,pretrained, local_rank=-1, arbitrary=False):
             
-        self.flownet = VSRbackbone()
+        self.flownet = VSRbackbone(pretrained)
         self.device = torch.device(f'cuda:{local_rank}')
         self.optimG = AdamW(self.flownet.parameters(), lr=1e-6, weight_decay=1e-3) # use large weight decay may avoid NaN loss
         self.epe = EPE()

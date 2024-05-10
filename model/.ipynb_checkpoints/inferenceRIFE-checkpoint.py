@@ -7,19 +7,20 @@ import itertools
 from model.warplayer import warp
 from torch.nn.parallel import DistributedDataParallel as DDP
 # from model.IFNet import *
-from model.IFNet_m import *
+# from model.IFNet_m import *
 import torch.nn.functional as F
 from model.loss import *
 from model.laplacian import *
 from model.refine import *
-# from model.IFNet_BIVSR_7images import *
-from model.LSTMwithAttention import *
+
+from model.LSTM_attention_v02 import *
+# from model.LSTMwithAttention import * # Version 0
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.autograd.set_detect_anomaly(True)
 class Model:
-    def __init__(self, local_rank=-1, arbitrary=False):
+    def __init__(self,pretrained, local_rank=-1, arbitrary=False):
             
-        self.flownet = VSRbackbone()
+        self.flownet = VSRbackbone(pretrained)
         self.device = torch.device(f'cuda:{local_rank}')
         self.optimG = AdamW(self.flownet.parameters(), lr=1e-6, weight_decay=1e-3) # use large weight decay may avoid NaN loss
         self.epe = EPE()
@@ -27,18 +28,6 @@ class Model:
         self.sobel = SOBEL()
         # if local_rank != -1:
         #    self.flownet = DDP(self.flownet, device_ids=[local_rank], output_device=local_rank)
-
-    def coninuetrain(self, path, rank=0 ):
-        def convert(param):
-            return {
-            k.replace("module.", ""): v
-                for k, v in param.items()
-                if "module." in k
-            }
-        device = torch.device(f'cuda:{rank}' if torch.cuda.is_available() else 'cpu')
-        checkpoint_path = f'{path}/flownet.pkl'
-        state_dict = torch.load(checkpoint_path, map_location=device)
-        self.flownet.load_state_dict(convert(torch.load('{}/flownet.pkl'.format(path))))
 
     def train(self):
         self.flownet.train()

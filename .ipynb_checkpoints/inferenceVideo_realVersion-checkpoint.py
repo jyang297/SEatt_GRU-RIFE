@@ -2,17 +2,21 @@ import os
 import sys
 import numpy as np
 sys.path.append('/root/SE/se/RIFE_LSTM_Context')
-root = '/root/SE/se/RIFE_LSTM_Context'
+root = '/root/SEatt_GRU-RIFE'
 import torch
+import model.toloadRIFE 
 import torchvision.transforms as transforms
 from PIL import Image
 
 # Config
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 frame_path = root + "/frames"
-output_path = root + "/outputs/outputs_real"
+output_path = root + "/outputs/outputs_slowmotion"
 pretrained_model_path = root + '/intrain_log'
-shift = 348
+pretrained_path = root + '/RIFE_log' # pretrained RIFE path
+shift = 0
+
+
 
 if not os.path.exists(frame_path):
     os.mkdir(frame_path)
@@ -90,10 +94,18 @@ def inference_video(model, frame_folder, output_folder, total_frames):
                 save_frame(interpolated_frames[i, :, :, :], output_folder, save_start_point + i + 1)
             torch.cuda.empty_cache()
 
+
+
 from model.inferenceRIFE import Model
 
+# Load pretrained Optical Flow Model
+checkpoint = convertload(torch.load(f'{pretrained_path}/flownet.pkl', map_location=device))
+Ori_IFNet_loaded = IFNet_update()
+Ori_IFNet_loaded.load_state_dict(checkpoint)
+for param in Ori_IFNet_loaded.parameters():
+    param.requires_grad = False
 
-model = Model(local_rank=0)
+model = Model(Ori_IFNet_loaded, local_rank=0)
 model.load_model(pretrained_model_path )
 print("Loaded ConvLSTM model")
 model.eval()
