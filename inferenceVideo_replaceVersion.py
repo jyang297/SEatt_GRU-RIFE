@@ -9,7 +9,6 @@ import torchvision.transforms as transforms
 from PIL import Image
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 # Config
 from model.inferenceRIFE import Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,7 +16,7 @@ frame_path = root + "/frames"
 output_path = root + "/outputs/outputs_replace"
 pretrained_model_path = root + '/intrain_log'
 pretrained_path = root + '/RIFE_log' # pretrained RIFE path
-shift = 0
+shift = 300
 
 if not os.path.exists(frame_path):
     os.mkdir(frame_path)
@@ -91,9 +90,10 @@ def inference_video(model, frame_folder, output_folder, total_frames):
 
 
 # Load pretrained Optical Flow Model
-checkpoint = toload.convertload(torch.load(f'{pretrained_path}/flownet.pkl', map_location=device))
+checkpoint =toload.convertload(torch.load(f'{pretrained_path}/flownet.pkl',map_location=device))
 Ori_IFNet_loaded = toload.IFNet_update()
 Ori_IFNet_loaded.load_state_dict(checkpoint)
+Ori_IFNet_loaded.eval()
 for param in Ori_IFNet_loaded.parameters():
     param.requires_grad = False
 
@@ -102,4 +102,4 @@ model.load_model(pretrained_model_path )
 print("Loaded ConvLSTM model")
 model.eval()
 model.to_device()
-inference_video(model.simple_inference, frame_path, output_path, 18)
+inference_video(model.simple_inference, frame_path, output_path, 60)

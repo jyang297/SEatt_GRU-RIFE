@@ -70,29 +70,22 @@ class downContext(nn.Module):
         return out 
     # out: 16
 
-
-
-
-class Unet(nn.Module):
+c=16
+class OriUnet(nn.Module):
     def __init__(self):
-        super(Unet, self).__init__()
-        self.downforwardori = downContext()
-        self.downbackwardori = downContext()
-        self.down0 = Conv2(17 + 16+16, 2*cu)
-        self.down1 = Conv2(4*cu, 4*cu)
-        self.down2 = Conv2(8*cu, 8*cu)
-        self.down3 = Conv2(16*cu, 16*cu)
-        self.up0 = deconv(32*cu, 8*cu)
-        self.up1 = deconv(16*cu, 4*cu)
-        self.up2 = deconv(8*cu, 2*cu)
-        self.up3 = deconv(4*cu, cu)
-        self.conv = nn.Conv2d(cu, 3, 3, 1, 1)
+        super().__init__()
+        self.down0 = Conv2(17, 2*c)
+        self.down1 = Conv2(4*c, 4*c)
+        self.down2 = Conv2(8*c, 8*c)
+        self.down3 = Conv2(16*c, 16*c)
+        self.up0 = deconv(32*c, 8*c)
+        self.up1 = deconv(16*c, 4*c)
+        self.up2 = deconv(8*c, 2*c)
+        self.up3 = deconv(4*c, c)
+        self.conv = nn.Conv2d(c, 3, 3, 1, 1)
 
-    def forward(self, img0, img1, warped_img0, warped_img1, forwardContext, backwardContext,mask, flow, c0, c1):
-        cimg0 = self.downforwardori(forwardContext, img0)
-        cimg1 = self.downbackwardori(backwardContext, img1)
-
-        s0 = self.down0(torch.cat((img0, img1, warped_img0, warped_img1, cimg0, cimg1,mask, flow), 1))
+    def forward(self, img0, img1, warped_img0, warped_img1, mask, flow, c0, c1):
+        s0 = self.down0(torch.cat((img0, img1, warped_img0, warped_img1, mask, flow), 1))
         s1 = self.down1(torch.cat((s0, c0[0], c1[0]), 1))
         s2 = self.down2(torch.cat((s1, c0[1], c1[1]), 1))
         s3 = self.down3(torch.cat((s2, c0[2], c1[2]), 1))
@@ -101,9 +94,10 @@ class Unet(nn.Module):
         x = self.up2(torch.cat((x, s1), 1)) 
         x = self.up3(torch.cat((x, s0), 1)) 
         x = self.conv(x)
-        return torch.tanh(x)
+        return torch.sigmoid(x)
 
-class Unet0to1(nn.Module):
+
+class Unet(nn.Module):
     def __init__(self, hidden_dim=128, shift_dim=128):
         # orward_shiftedFeature, backward_shftedFeature, forwardContext, backwardContext
         super().__init__()

@@ -3,26 +3,24 @@ import sys
 import numpy as np
 sys.path.append('/root/SE/se/RIFE_LSTM_Context')
 root = '/root/SEatt_GRU-RIFE'
+output_root = "/root/autodl-tmp"
 import torch
-import model.toloadRIFE 
+import model.toloadRIFE as toload
 import torchvision.transforms as transforms
 from PIL import Image
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Config
+from model.inferenceRIFE import Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-frame_path = root + "/frames"
-output_path = root + "/outputs/outputs_slowmotion"
+frame_path = output_root + "/frames"
+output_path = output_root + "/outputs/dacing_slowmotion"
 pretrained_model_path = root + '/intrain_log'
 pretrained_path = root + '/RIFE_log' # pretrained RIFE path
 shift = 0
-
-
-
-if not os.path.exists(frame_path):
-    os.mkdir(frame_path)
     
 if not os.path.exists(output_path):
-    os.mkdir(output_path)
+    os.makedirs(output_path)
 
 def load_frames(frame_folder, start_frame, num_frames=4):
     # Load a sequence of 'num_frames' starting from 'start_frame'
@@ -34,19 +32,6 @@ def load_frames(frame_folder, start_frame, num_frames=4):
         if i != num_frames:
             frames.append(frame)
         
-    '''
-    imgs = frames
-    h, w =(224,224)
-    ih, iw, _ = imgs[0].shape
-    x = np.random.randint(0, ih - h + 1)
-    y = np.random.randint(0, iw - w + 1)
-    for i in range(7):
-        imgs[i] = imgs[i][x:x+h, y:y+w, :]
-        #img1 = img1[x:x+h, y:y+w, :]
-        #gt = gt[x:x+h, y:y+w, :]
-        #return img0, gt, img1
-        return imgs    
-    '''
     print('load')
     return frames
 
@@ -75,11 +60,11 @@ def save_frame(tensor, output_folder, frame_index):
 
 def inference_video(model, frame_folder, output_folder, total_frames):
     with torch.no_grad():
-        for start_frame in range(0,total_frames - 3 + 1, 4):  # Adjust the step to handle overlap or gaps
+        for start_frame in range(0,total_frames - 2 + 1, 3):  # Adjust the step to handle overlap or gaps
 
             # manual shift
             start_frame += shift
-            i = int(start_frame/4)
+            i = int(start_frame/3)
             frames = load_frames(frame_folder, start_frame)
             save_start_point = i*6
             input_tensor = preprocess_frames(frames)
@@ -99,9 +84,10 @@ def inference_video(model, frame_folder, output_folder, total_frames):
 from model.inferenceRIFE import Model
 
 # Load pretrained Optical Flow Model
-checkpoint = convertload(torch.load(f'{pretrained_path}/flownet.pkl', map_location=device))
-Ori_IFNet_loaded = IFNet_update()
+checkpoint =toload.convertload(torch.load(f'{pretrained_path}/flownet.pkl',map_location=device))
+Ori_IFNet_loaded = toload.IFNet_update()
 Ori_IFNet_loaded.load_state_dict(checkpoint)
+Ori_IFNet_loaded.eval()
 for param in Ori_IFNet_loaded.parameters():
     param.requires_grad = False
 
@@ -110,4 +96,4 @@ model.load_model(pretrained_model_path )
 print("Loaded ConvLSTM model")
 model.eval()
 model.to_device()
-inference_video(model.simple_inference, frame_path, output_path, 16)
+inference_video(model.simple_inference, frame_path, output_path, 100)
