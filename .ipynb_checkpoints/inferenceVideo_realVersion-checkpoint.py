@@ -13,8 +13,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Config
 from model.inferenceRIFE import Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-frame_path = output_root + "/frames"
-output_path = output_root + "/outputs/dacing_slowmotion"
+# frame_path = output_root + "/outputs/dacing_slowmotion" # typo here I don't want to change it now
+frame_path = output_root + "/outputs/soccer_4x" 
+# frame_path = "outputs/outputs_slowmotion"                
+
+output_path = output_root + "/outputs/soccer_8x"
 pretrained_model_path = root + '/intrain_log'
 pretrained_path = root + '/RIFE_log' # pretrained RIFE path
 shift = 0
@@ -32,7 +35,7 @@ def load_frames(frame_folder, start_frame, num_frames=4):
         if i != num_frames:
             frames.append(frame)
         
-    print('load')
+    # print('load')
     return frames
 
 
@@ -46,17 +49,17 @@ def preprocess_frames(frames):
     ])
     # tensor = torch.stack([transform(frame) for frame in frames], dim=1)  # shape: (3, 7, H, W)
     tensor = torch.stack([transform(frame) for frame in frames], dim=0) # shape: (3, 7, H, W)
-    print("Tensor.shape", tensor.shape)
+    #print("Tensor.shape", tensor.shape)
     tensor = tensor.view(1, 3*7, tensor.shape[2], tensor.shape[3])  # shape: (1, 21, H, W)
     
-    print('preprocess')
+    #print('preprocess')
     return tensor.to(device)
 
 def save_frame(tensor, output_folder, frame_index):
     transform = transforms.ToPILImage()
     img = transform(tensor.cpu())
     img.save(os.path.join(output_folder, f"frame_{frame_index:04d}.png"))
-    #print('save\n')
+    ##print('save\n')
 
 def inference_video(model, frame_folder, output_folder, total_frames):
     with torch.no_grad():
@@ -68,9 +71,9 @@ def inference_video(model, frame_folder, output_folder, total_frames):
             frames = load_frames(frame_folder, start_frame)
             save_start_point = i*6
             input_tensor = preprocess_frames(frames)
-            print('gointo model')
+            #print('gointo model')
             output_allframes_tensors = model(input_tensor)
-            print('compute finished')
+            #print('compute finished')
             interpolated_frames = output_allframes_tensors[:-1] 
             # Example reshape to (1, 7, 3, H, W)
             print('try save')
@@ -96,4 +99,4 @@ model.load_model(pretrained_model_path )
 print("Loaded ConvLSTM model")
 model.eval()
 model.to_device()
-inference_video(model.simple_inference, frame_path, output_path, 100)
+inference_video(model.simple_inference, frame_path, output_path, 1200)
